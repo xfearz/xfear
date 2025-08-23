@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Fell1 – Xem ảnh & video</title>
+<style>
+:root { --bg:#0f1115; --card:#151922; --text:#e8edf2; --muted:#a8b3c7; }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{position:sticky;top:0;background:#10131b;border-bottom:1px solid #20283a;z-index:10}
+.header-inner{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+h1{font-size:18px;margin:0}
+.controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+button,label,input{font-size:14px}
+label[for=folder]{background:#1a2233;border:1px solid #27324a;padding:8px 10px;border-radius:8px;cursor:pointer}
+#folder{display:none}
+#q{background:#0e131e;border:1px solid #27324a;border-radius:8px;padding:8px 10px;color:var(--text);min-width:220px}
+main{max-width:1200px;margin:16px auto 56px;padding:0 16px}
+#summary{color:var(--muted);font-size:13px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid #20283a;border-radius:12px;overflow:hidden}
+.preview{display:block;width:100%;height:260px;overflow:hidden;background:#0b0f18}
+.preview img,.preview video{width:100%;height:100%;object-fit:contain;display:block}
+.meta{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;color:var(--muted);font-size:12px}
+.meta code{color:#c7d2fe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+.hidden{display:none!important}
+footer{max-width:1200px;margin:28px auto 40px;padding:0 16px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <h1>Fell1 – Xem ảnh &amp; video</h1>
+    <div class="controls">
+      <label for="folder">📁 Chọn thư mục Fell1</label>
+      <input id="folder" type="file" webkitdirectory directory multiple/>
+      <input id="q" type="search" placeholder="Tìm file… (ví dụ: 001, scene, .mp4)"/>
+    </div>
+  </div>
+</header>
+
+<main>
+  <p id="summary">Chưa tải thư mục nào.</p>
+  <div id="grid" class="grid" aria-live="polite"></div>
+</main>
+
+<footer>
+  Gợi ý: Nhấn vào ô xem để mở file trong tab mới. Video có điều khiển phát/tạm dừng.
+</footer>
+
+<script>
+(() => {
+  const IMG_EXT = new Set(['.jpg','.jpeg','.png','.gif','.webp','.bmp']);
+  const VID_EXT = new Set(['.mp4','.webm','.mkv','.mov','.m4v','.avi']);
+  const input = document.getElementById('folder');
+  const grid  = document.getElementById('grid');
+  const q     = document.getElementById('q');
+  const sum   = document.getElementById('summary');
+  let items = []; // [{name, url, kind}]
+
+  function extOf(name){
+    const i = name.lastIndexOf('.');
+    return i>=0 ? name.slice(i).toLowerCase() : '';
+  }
+
+  function clearURLs(){
+    for(const it of items){
+      try{ URL.revokeObjectURL(it.url); }catch(e){}
+    }
+  }
+
+  function render(list){
+    grid.innerHTML = '';
+    for(const it of list){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.name = it.name.toLowerCase();
+
+      const wrap = document.createElement('a');
+      wrap.className = 'preview';
+      wrap.href = it.url;
+      wrap.target = '_blank';
+      wrap.rel = 'noopener';
+
+      if(it.kind === 'image'){
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.src = it.url;
+        img.alt = it.name;
+        wrap.appendChild(img);
+      }else{
+        const v = document.createElement('video');
+        v.src = it.url;
+        v.controls = true;
+        v.preload = 'metadata';
+        wrap.appendChild(v);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const code = document.createElement('code');
+      code.title = it.name;
+      code.textContent = it.name;
+      const span = document.createElement('span');
+      span.textContent = it.kind;
+      meta.append(code, span);
+
+      card.append(wrap, meta);
+      grid.appendChild(card);
+    }
+    sum.textContent = list.length
+      ? `Đã nạp ${list.length} mục (${list.filter(x=>x.kind==='image').length} ảnh, ${list.filter(x=>x.kind==='video').length} video).`
+      : 'Không tìm thấy ảnh/video phù hợp.';
+  }
+
+  input.addEventListener('change', () => {
+    clearURLs();
+    items = [];
+    const files = Array.from(input.files || []);
+    // Chỉ lấy file trong chính Fell1 (và mọi cấp con), bỏ thư mục
+    for(const f of files){
+      const e = extOf(f.name);
+      if(IMG_EXT.has(e) || VID_EXT.has(e)){
+        items.push({
+          name: f.webkitRelativePath || f.name,
+          url: URL.createObjectURL(f),
+          kind: IMG_EXT.has(e) ? 'image' : 'video'
+        });
+      }
+    }
+    // Sắp xếp: ảnh/video xen kẽ theo tên (tăng dần)
+    items.sort((a,b)=> a.name.localeCompare(b.name, undefined, {numeric:true,sensitivity:'base'}));
+    render(items);
+    q.value = '';
+  });
+
+  q.addEventListener('input', () => {
+    const term = q.value.trim().toLowerCase();
+    if(!term){ render(items); return; }
+    const filtered = items.filter(it => it.name.toLowerCase().includes(term));
+    render(filtered);
+  });
+
+  window.addEventListener('beforeunload', clearURLs);
+})();
+</script>
+</body>
+</html>
