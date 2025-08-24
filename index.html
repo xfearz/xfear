@@ -53,7 +53,7 @@ body.locked header, body.locked main, body.locked footer {
 .ginput{display:flex; gap:8px}
 .ginput input{
   flex:1; padding:10px 12px; border-radius:10px;
-  border:1px solid var(--border); background:#0c1120; color:var(--text);
+  border:1px solid var(--border); background:#0c1120; color:#fff;
   font-size:14px; outline:none;
 }
 .ginput button{
@@ -63,6 +63,8 @@ body.locked header, body.locked main, body.locked footer {
 }
 .ghint{margin-top:10px; font-size:12px; color:#8aa7d1}
 .hidden{display:none!important}
+.badge{padding:2px 6px;border-radius:999px;background:#263142;color:#bfe2ff;font-size:12px}
+.meta-left{display:flex;gap:8px;align-items:center;min-width:0}
 </style>
 </head>
 
@@ -93,13 +95,14 @@ body.locked header, body.locked main, body.locked footer {
   <main>
     <div class="notice">
       Mỗi thư mục cấp 1 là <b>danh mục</b>. Trang đọc danh sách file từ <code>manifest.json</code> (build trước khi push).
+      Nếu có <code>r2-map.json</code>, các file lớn sẽ tự chuyển sang Cloudflare R2 nhưng vẫn giữ path hiển thị.
     </div>
     <p id="summary">Đang tải dữ liệu…</p>
     <div id="content"></div>
   </main>
 
   <footer>
-    Nhấn vào thẻ để mở file trong tab mới.
+    Nhấn vào thẻ để mở file trong tab mới. (Nguồn: <span class="badge">REPO</span> hoặc <span class="badge">R2</span>)
   </footer>
 
 <script>
@@ -127,44 +130,66 @@ function tryLogin(){
     gate.classList.add('hidden');
     body.classList.remove('locked');
   } else {
-    // sai -> chuyển trang hiện tại sang link YouTube
-    window.location.href = RICK;
+    window.location.href = RICK; // sai mật khẩu → ra ngoài
   }
 }
-
 btn.addEventListener('click', tryLogin);
 pw.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ tryLogin(); }});
 
-/* ===== Gallery code (JPG & MP4 only) ===== */
+/* ===== Gallery (JPG & MP4) + R2 mapping ===== */
 const IMG_EXT = new Set(['.jpg']);   // chỉ JPG
 const VID_EXT = new Set(['.mp4']);   // chỉ MP4
 const q = document.getElementById('q');
 const content = document.getElementById('content');
 const summary = document.getElementById('summary');
 
+/** r2Map: { "Fall1/001.mp4": "https://...R2.../Fall1/001.mp4", ... } */
+let r2Map = Object.create(null);
+
 function extOf(n){ const i=n.lastIndexOf('.'); return i>=0 ? n.slice(i).toLowerCase() : ''; }
 function isImg(n){ return IMG_EXT.has(extOf(n)); }
 function isVid(n){ return VID_EXT.has(extOf(n)); }
 
-function createCard(path){
+/** Trả về {url, origin} – nếu có trong r2Map thì dùng URL R2 */
+function resolveURL(relPath){
+  // relPath kiểu "Fall1/001.mp4"
+  const mapped = r2Map[relPath] || null;
+  if (mapped) return { url: mapped, origin: 'R2' };
+  return { url: relPath, origin: 'REPO' };
+}
+
+function createCard(relPath){
+  const {url, origin} = resolveURL(relPath);
+  const isImage = isImg(relPath);
+  const isVideo = isVid(relPath);
+
   const card = document.createElement('div');
   card.className = 'card';
-  card.dataset.name = path.toLowerCase();
+  card.dataset.name = relPath.toLowerCase();
+
   const wrap = document.createElement('a');
   wrap.className = 'preview';
-  wrap.href = path;
+  wrap.href = url;
   wrap.target = '_blank'; wrap.rel='noopener';
-  if(isImg(path)){
-    const img = document.createElement('img'); img.loading='lazy'; img.src=path; img.alt=path;
+
+  if(isImage){
+    const img = document.createElement('img');
+    img.loading='lazy'; img.src=url; img.alt=relPath;
     wrap.appendChild(img);
   }else{
-    const v = document.createElement('video'); v.src=path; v.controls=true; v.preload='metadata';
+    const v = document.createElement('video');
+    v.src=url; v.controls=true; v.preload='metadata';
     wrap.appendChild(v);
   }
+
   const meta = document.createElement('div'); meta.className='meta';
-  const code = document.createElement('code'); code.textContent = path;
-  const span = document.createElement('span'); span.textContent = isImg(path)?'image':'video';
-  meta.append(code, span);
+  const left = document.createElement('div'); left.className='meta-left';
+  const code = document.createElement('code'); code.textContent = relPath;
+  const badge = document.createElement('span'); badge.className='badge'; badge.textContent = origin;
+  left.append(code, badge);
+  const span = document.createElement('span'); span.textContent = isImage ? 'image' : 'video';
+  meta.append(left, span);
+
   card.append(wrap, meta);
   return card;
 }
@@ -174,12 +199,17 @@ function render(manifest, term=''){
   const cats = Object.keys(manifest).sort();
   let total=0, nImg=0, nVid=0;
   for(const cat of cats){
-    const files = (manifest[cat]||[]).filter(p => (!term || p.toLowerCase().includes(term)) && (isImg(p)||isVid(p)));
+    // manifest[cat] chứa các path tương đối: "Fall1/001.jpg", "Fall1/001.mp4", ...
+    const files = (manifest[cat]||[])
+      .filter(p => (!term || p.toLowerCase().includes(term)))
+      .filter(p => isImg(p) || isVid(p));
+
     if(!files.length) continue;
     const sec = document.createElement('section');
     sec.className = 'section';
     const h2 = document.createElement('h2'); h2.textContent = cat;
     const grid = document.createElement('div'); grid.className='grid';
+
     for(const f of files){
       grid.appendChild(createCard(f));
       total++; if(isImg(f)) nImg++; else if(isVid(f)) nVid++;
@@ -190,20 +220,38 @@ function render(manifest, term=''){
   summary.textContent = total ? `Tổng ${total} file (${nImg} ảnh, ${nVid} video).` : 'Không có file phù hợp.';
 }
 
-async function load(){
+async function fetchJSON(url){
   try{
-    const res = await fetch('manifest.json', {cache:'no-store'});
-    if(!res.ok) throw new Error('Không tìm thấy manifest.json');
-    const manifest = await res.json();
-    render(manifest);
-    q.addEventListener('input', () => {
-      const term = q.value.trim().toLowerCase();
-      render(manifest, term);
-    });
-  }catch(e){
-    summary.textContent = 'Lỗi: ' + e.message + '. Hãy tạo manifest.json bằng script và push lại.';
-  }
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) return null;
+    return await res.json();
+  }catch{ return null; }
 }
+
+async function load(){
+  // 1) Tải r2-map.json (nếu có)
+  const r2 = await fetchJSON('r2-map.json');
+  if (r2 && Array.isArray(r2)) {
+    // định dạng từ script: [{path:"Fall1/001.mp4", r2:"https://..."}, ...]
+    for(const it of r2){
+      if(it && it.path && it.r2) r2Map[it.path] = it.r2;
+    }
+  }
+
+  // 2) Tải manifest.json (bắt buộc)
+  const manifest = await fetchJSON('manifest.json');
+  if(!manifest){
+    summary.textContent = 'Lỗi: không tìm thấy manifest.json. Hãy build manifest và push lại.';
+    return;
+  }
+
+  render(manifest);
+  q.addEventListener('input', () => {
+    const term = q.value.trim().toLowerCase();
+    render(manifest, term);
+  });
+}
+
 load();
 </script>
 </body>
