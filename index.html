@@ -3,59 +3,146 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Xfear – Fall1 & Fall2</title>
+<title>Gallery – Danh mục JPG & MP4</title>
 <style>
-body{font-family:sans-serif;background:#111;color:#eee;margin:0}
-h1{padding:16px;background:#222;margin:0}
-.section{margin:20px;padding:0 16px}
-.section h2{margin:0 0 10px}
+:root { --bg:#0f1115; --card:#151922; --text:#e8edf2; --muted:#a8b3c7; --border:#20283a; }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{position:sticky;top:0;background:#10131b;border-bottom:1px solid var(--border);z-index:10}
+.header-inner{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+h1{font-size:18px;margin:0}
+.controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+#q{background:#0e131e;border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);min-width:240px}
+main{max-width:1200px;margin:16px auto 56px;padding:0 16px}
+#summary{color:var(--muted);font-size:13px;margin:0 0 10px}
+.section{margin:24px 0}
+.section h2{margin:0 0 8px;font-size:18px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-.card{background:#1a1a1a;border-radius:8px;overflow:hidden}
-.card img,.card video{width:100%;height:200px;object-fit:contain;display:block;background:#000}
-.card .meta{padding:6px 10px;font-size:12px;color:#aaa}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.preview{display:block;width:100%;height:260px;overflow:hidden;background:#0b0f18}
+.preview img,.preview video{width:100%;height:100%;object-fit:contain;display:block}
+.meta{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;color:var(--muted);font-size:12px}
+.meta code{color:#c7d2fe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+.notice{background:#172033;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0 16px;color:var(--muted);font-size:13px}
+footer{max-width:1200px;margin:28px auto 40px;padding:0 16px;color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
-<h1>Xfear – Thư viện Fall1 & Fall2</h1>
+<header>
+  <div class="header-inner">
+    <h1>Gallery – Danh mục JPG &amp; MP4</h1>
+    <div class="controls">
+      <input id="q" type="search" placeholder="Tìm tên file… (vd: 001, .mp4, .jpg)"/>
+    </div>
+  </div>
+</header>
 
-<div id="content"></div>
+<main>
+  <div class="notice">
+    Mỗi thư mục cấp 1 là <b>danh mục</b>. Trang đọc danh sách file từ <code>manifest.json</code> (build trước khi push).
+  </div>
+  <p id="summary">Đang tải dữ liệu…</p>
+  <div id="content"></div>
+</main>
+
+<footer>
+  Nhấn vào thẻ để mở file trong tab mới.
+</footer>
 
 <script>
-const folders = ["Fall1","Fall2"];
-const extsImg = [".jpg",".jpeg",".png",".gif",".webp"];
-const extsVid = [".mp4",".webm",".mkv",".mov",".m4v",".avi"];
+const IMG_EXT = new Set(['.jpg']);   // chỉ JPG đúng yêu cầu
+const VID_EXT = new Set(['.mp4']);   // chỉ MP4 đúng yêu cầu
 
-function isImg(n){return extsImg.some(e=>n.toLowerCase().endsWith(e));}
-function isVid(n){return extsVid.some(e=>n.toLowerCase().endsWith(e));}
+const q = document.getElementById('q');
+const content = document.getElementById('content');
+const summary = document.getElementById('summary');
 
-async function fetchList(folder){
-  // GitHub Pages không cho liệt kê folder tự động,
-  // nên bạn cần tự viết tay danh sách file, hoặc dùng script build trước khi push.
-  // Ví dụ tạm:
-  const files = [
-    "img1.jpg","img2.png","vid1.mp4" // <-- sửa thành đúng file bạn có
-  ];
-  return files.map(f=>`${folder}/${f}`);
+function extOf(n){ const i=n.lastIndexOf('.'); return i>=0 ? n.slice(i).toLowerCase() : ''; }
+function isImg(n){ return IMG_EXT.has(extOf(n)); }
+function isVid(n){ return VID_EXT.has(extOf(n)); }
+
+function createCard(path){
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.name = path.toLowerCase();
+
+  const wrap = document.createElement('a');
+  wrap.className = 'preview';
+  wrap.href = path;
+  wrap.target = '_blank';
+  wrap.rel = 'noopener';
+
+  if(isImg(path)){
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.src = path;
+    img.alt = path;
+    wrap.appendChild(img);
+  }else{
+    const v = document.createElement('video');
+    v.src = path;
+    v.controls = true;
+    v.preload = 'metadata';
+    wrap.appendChild(v);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const code = document.createElement('code');
+  code.textContent = path;
+  const span = document.createElement('span');
+  span.textContent = isImg(path) ? 'image' : 'video';
+  meta.append(code, span);
+
+  card.append(wrap, meta);
+  return card;
 }
 
-async function render(){
-  const container = document.getElementById("content");
-  for(const folder of folders){
-    const sec = document.createElement("div");
-    sec.className="section";
-    sec.innerHTML=`<h2>${folder}</h2><div class="grid"></div>`;
-    container.appendChild(sec);
-    const grid = sec.querySelector(".grid");
-    const files = await fetchList(folder);
-    files.forEach(file=>{
-      const card = document.createElement("div"); card.className="card";
-      if(isImg(file)) card.innerHTML=`<img src="${file}" alt="${file}"><div class="meta">${file}</div>`;
-      else if(isVid(file)) card.innerHTML=`<video src="${file}" controls></video><div class="meta">${file}</div>`;
+function render(manifest, term=''){
+  content.innerHTML='';
+  const cats = Object.keys(manifest).sort();
+  let total=0, nImg=0, nVid=0;
+
+  for(const cat of cats){
+    const files = (manifest[cat]||[]).filter(p => !term || p.toLowerCase().includes(term));
+    if(!files.length) continue;
+
+    const sec = document.createElement('section');
+    sec.className = 'section';
+    const h2 = document.createElement('h2');
+    h2.textContent = cat;
+
+    const grid = document.createElement('div');
+    grid.className='grid';
+
+    for(const f of files){
+      const card = createCard(f);
       grid.appendChild(card);
+      total++; if(isImg(f)) nImg++; else if(isVid(f)) nVid++;
+    }
+
+    sec.append(h2, grid);
+    content.appendChild(sec);
+  }
+
+  summary.textContent = total ? `Tổng ${total} file (${nImg} ảnh, ${nVid} video).` : 'Không có file phù hợp.';
+}
+
+async function load(){
+  try{
+    const res = await fetch('manifest.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('Không tìm thấy manifest.json');
+    const manifest = await res.json();
+    render(manifest);
+    q.addEventListener('input', () => {
+      const term = q.value.trim().toLowerCase();
+      render(manifest, term);
     });
+  }catch(e){
+    summary.textContent = 'Lỗi: ' + e.message + '. Hãy tạo manifest.json bằng script và push lại.';
   }
 }
-render();
+load();
 </script>
 </body>
 </html>
