@@ -98,132 +98,142 @@ body.locked header, body.locked main, body.locked footer {
 
 <script>
 /* ===== Password Gate ===== */
-const REQUIRED = 'MANHWA'; // đổi theo ý bạn
+const REQUIRED = 'MANHWA';
 const gate = document.getElementById('gate');
 const body = document.body, pw = document.getElementById('pw'), btn = document.getElementById('btn');
 if (sessionStorage.getItem('gateOK') === '1'){ gate.classList.add('hidden'); body.classList.remove('locked'); } else { setTimeout(()=>pw.focus(), 50); }
 function tryLogin(){ const val=(pw.value||'').trim(); if(val===REQUIRED){ sessionStorage.setItem('gateOK','1'); gate.classList.add('hidden'); body.classList.remove('locked'); } else { alert('Sai mật khẩu!'); } }
 btn.addEventListener('click', tryLogin);
-pw.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ tryLogin(); }});
+pw.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ tryLogin(); }});
 
 /* ===== Helpers ===== */
 const q = document.getElementById('q');
 const content = document.getElementById('content');
 const summary = document.getElementById('summary');
 
-function fmtTime(s){ s = Math.max(0, s|0); const m = (s/60)|0, h=(m/60)|0; const mm=(m%60).toString().padStart(2,'0'); const ss=(s%60).toString().padStart(2,'0'); return h? `${h}:${mm}:${ss}` : `${m}:${ss}`; }
+function looksLikeImage(u){ return /\.(jpg|jpeg|png|webp|gif|bmp|heic|heif|tif|tiff)(\?|$)/i.test(u) || /drive\.google\.com\/uc\?id=/i.test(u); }
+function looksLikeVideoFile(u){ return /\.(mp4|webm|mkv|mov|avi|3gp|m3u8|ts)(\?|$)/i.test(u); }
+function isDrivePreview(u){ return /https:\/\/drive\.google\.com\/file\/.+\/preview/i.test(u); }
+function fmtTime(s){ s = Math.max(0, s|0); const m=(s/60)|0,h=(m/60)|0,mm=(m%60).toString().padStart(2,'0'),ss=(s%60).toString().padStart(2,'0'); return h?`${h}:${mm}:${ss}`:`${m}:${ss}`; }
 
-/* ===== Video UI (custom) ===== */
+/* ===== Custom controls chỉ dùng cho file video trực tiếp ===== */
 function attachVUI(video){
-  const bar = document.createElement('div'); bar.className = 'vui';
-  const btnPlay = document.createElement('button'); btnPlay.className = 'btn'; btnPlay.textContent='⏯';
-  const btnBack = document.createElement('button'); btnBack.className = 'btn'; btnBack.textContent='⏪15s';
-  const btnFwd  = document.createElement('button'); btnFwd.className  = 'btn'; btnFwd.textContent='15s⏩';
-  const seek = document.createElement('input'); seek.type='range'; seek.min=0; seek.max=100; seek.value=0; seek.className='range';
-  const time = document.createElement('span'); time.className='time'; time.textContent='0:00 / 0:00';
-  const vol = document.createElement('input'); vol.type='range'; vol.min=0; vol.max=1; vol.step=0.01; vol.value=video.volume; vol.className='range';
-  const btnMute = document.createElement('button'); btnMute.className='btn'; btnMute.textContent='🔈';
-  const btnPip  = document.createElement('button'); btnPip.className='btn'; btnPip.textContent='PiP';
-
-  bar.append(btnPlay, btnBack, btnFwd, seek, time, vol, btnMute, btnPip);
-  video.parentElement.appendChild(bar);
-
-  function updateTime(){
-    if (!isFinite(video.duration)) return;
-    time.textContent = `${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`;
-    seek.value = (video.currentTime / video.duration) * 100 || 0;
-  }
-  video.addEventListener('timeupdate', updateTime);
-  video.addEventListener('loadedmetadata', updateTime);
-
-  btnPlay.onclick = ()=> video.paused ? video.play() : video.pause();
-  btnBack.onclick = ()=> video.currentTime = Math.max(0, video.currentTime - 15);
-  btnFwd.onclick  = ()=> video.currentTime = Math.min(video.duration||Infinity, video.currentTime + 15);
-  seek.oninput = ()=> { if (isFinite(video.duration)) video.currentTime = (seek.value/100) * video.duration; }
-  vol.oninput = ()=> { video.volume = +vol.value; video.muted = (video.volume===0); btnMute.textContent = video.muted ? '🔇' : '🔈'; }
-  btnMute.onclick = ()=> { video.muted = !video.muted; btnMute.textContent = video.muted ? '🔇' : '🔈'; }
-  btnPip.onclick = async ()=> { if (document.pictureInPictureElement) await document.exitPictureInPicture(); else if (document.pictureInPictureEnabled) try{ await video.requestPictureInPicture(); }catch{} };
+  const bar = document.createElement('div'); bar.className='vui';
+  const bPlay = mkBtn('⏯'), bBack = mkBtn('⏪15s'), bFwd = mkBtn('15s⏩');
+  const seek = mkRange(); const time = mkTime(); const vol = mkRange(0,1,0.01,video.volume); const bMute = mkBtn('🔈'); const bPip=mkBtn('PiP');
+  bar.append(bPlay,bBack,bFwd,seek,time,vol,bMute,bPip); video.parentElement.appendChild(bar);
+  function upd(){ if(!isFinite(video.duration)) return; time.textContent=`${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`; seek.value=(video.currentTime/video.duration)*100||0; }
+  video.addEventListener('timeupdate',upd); video.addEventListener('loadedmetadata',upd);
+  bPlay.onclick=()=> video.paused?video.play():video.pause();
+  bBack.onclick=()=> video.currentTime=Math.max(0,video.currentTime-15);
+  bFwd.onclick =()=> video.currentTime=Math.min(video.duration||Infinity,video.currentTime+15);
+  seek.oninput =()=>{ if(isFinite(video.duration)) video.currentTime=(seek.value/100)*video.duration; }
+  vol.oninput  =()=>{ video.volume=+vol.value; video.muted=(video.volume===0); bMute.textContent=video.muted?'🔇':'🔈'; }
+  bMute.onclick=()=>{ video.muted=!video.muted; bMute.textContent=video.muted?'🔇':'🔈'; }
+  bPip.onclick =async()=>{ if(document.pictureInPictureElement) await document.exitPictureInPicture(); else if(document.pictureInPictureEnabled) try{ await video.requestPictureInPicture(); }catch{} };
 }
+function mkBtn(t){ const b=document.createElement('button'); b.className='btn'; b.textContent=t; return b; }
+function mkRange(min=0,max=100,step=1,val=0){ const r=document.createElement('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=val; r.className='range'; return r; }
+function mkTime(){ const s=document.createElement('span'); s.className='time'; s.textContent='0:00 / 0:00'; return s; }
 
-/* ===== Render ===== */
+/* ===== Card builders ===== */
 function createImageCard(url){
-  const card = document.createElement('div'); card.className='card';
-  const wrap = document.createElement('div'); wrap.className='preview';
-  const img = document.createElement('img'); img.loading='lazy'; img.src=url; img.alt=url;
+  const card=document.createElement('div'); card.className='card';
+  const wrap=document.createElement('div'); wrap.className='preview';
+  const img=document.createElement('img'); img.loading='lazy'; img.src=url; img.alt=url;
   wrap.appendChild(img);
-  const meta = document.createElement('div'); meta.className='meta';
-  const left = document.createElement('div'); left.className='meta-left';
-  const code = document.createElement('code'); code.textContent = url;
-  const kind = document.createElement('span'); kind.className='kind'; kind.textContent='image';
-  left.append(code);
-  meta.append(left, kind);
-  card.append(wrap, meta);
+  card.append(wrap, meta(url,'image'));
   return card;
 }
-
 function createVideoCard(url){
-  const card = document.createElement('div'); card.className='card';
-  const wrap = document.createElement('div'); wrap.className='preview';
-  const v = document.createElement('video');
-  v.src=url; v.preload='metadata'; v.controls=false; v.playsInline=true;
+  const card=document.createElement('div'); card.className='card';
+  const wrap=document.createElement('div'); wrap.className='preview';
+
+  if(isDrivePreview(url)){
+    // Google Drive /preview → nhúng iframe (không dùng <video>)
+    const ifr=document.createElement('iframe'); ifr.src=url; ifr.allow='autoplay; fullscreen'; ifr.style.width='100%'; ifr.style.height='100%'; ifr.frameBorder='0';
+    wrap.appendChild(ifr);
+    card.append(wrap, meta(url,'Drive iframe'));
+    return card;
+  }
+
+  // File video trực tiếp → dùng <video> + custom controls
+  const v=document.createElement('video'); v.src=url; v.preload='metadata'; v.controls=false; v.playsInline=true;
   wrap.appendChild(v);
-  const meta = document.createElement('div'); meta.className='meta';
-  const left = document.createElement('div'); left.className='meta-left';
-  const code = document.createElement('code'); code.textContent = url;
-  const kind = document.createElement('span'); kind.className='kind'; kind.textContent='video';
-  left.append(code);
-  meta.append(left, kind);
-  card.append(wrap, meta);
-  // attach controls
+  card.append(wrap, meta(url,'video'));
   attachVUI(v);
   return card;
 }
+function meta(url,kind){
+  const m=document.createElement('div'); m.className='meta';
+  const left=document.createElement('div'); left.className='meta-left';
+  const code=document.createElement('code'); code.textContent=url;
+  const span=document.createElement('span'); span.className='kind'; span.textContent=kind;
+  left.append(code); m.append(left,span); return m;
+}
 
-function render(manifest, term=''){
+/* ===== Render cả 2 dạng manifest ===== */
+function normalizeManifest(raw){
+  // nếu raw[cat] là array → coi là dạng cũ, tách image/video theo đuôi/link
+  const out={};
+  for(const [cat,val] of Object.entries(raw)){
+    if(Array.isArray(val)){
+      const images=[], videos=[];
+      for(const u of val){ if(looksLikeImage(u)) images.push(u); else if(looksLikeVideoFile(u)||isDrivePreview(u)) videos.push(u); }
+      out[cat]={images, videos};
+    }else{
+      // dạng mới {images, videos}
+      const images=(val.images||[]).slice();
+      const videos=(val.videos||[]).slice();
+      out[cat]={images, videos};
+    }
+  }
+  return out;
+}
+
+function render(manifestRaw, term=''){
+  const manifest=normalizeManifest(manifestRaw);
   content.innerHTML='';
-  const cats = Object.keys(manifest).sort((a,b)=>{
+  const cats=Object.keys(manifest).sort((a,b)=>{
     const na=parseInt(a.replace(/\D/g,''))||0, nb=parseInt(b.replace(/\D/g,''))||0; return na-nb;
   });
-
   let total=0, nImg=0, nVid=0;
 
   for(const cat of cats){
-    const pack = manifest[cat]||{images:[],videos:[]};
-    let imgs = (pack.images||[]).filter(u=>!term || u.toLowerCase().includes(term));
-    let vids = (pack.videos||[]).filter(u=>!term || u.toLowerCase().includes(term));
-    if(!imgs.length && !vids.length) continue;
+    let {images, videos} = manifest[cat];
+    images = images.filter(u=>!term || u.toLowerCase().includes(term));
+    videos = videos.filter(u=>!term || u.toLowerCase().includes(term));
+    if(!images.length && !videos.length) continue;
 
-    const sec = document.createElement('section'); sec.className='section';
-    const h2 = document.createElement('h2');
-    h2.innerHTML = `${cat} `;
-    const bar = document.createElement('div'); bar.className='tabbar';
-    const bImg = document.createElement('button'); bImg.textContent = `Ảnh (${imgs.length})`; bImg.className='active';
-    const bVid = document.createElement('button'); bVid.textContent = `Video (${vids.length})`;
-    bar.append(bImg, bVid);
-    h2.append(bar);
+    const sec=document.createElement('section'); sec.className='section';
+    const h2=document.createElement('h2');
+    const tab=document.createElement('div'); tab.className='tabbar';
+    const bImg=document.createElement('button'); const bVid=document.createElement('button');
+    bImg.textContent=`Ảnh (${images.length})`; bVid.textContent=`Video (${videos.length})`; bImg.className='active';
+    tab.append(bImg,bVid); h2.append(cat,' ',tab);
 
-    const gImg = document.createElement('div'); gImg.className='grid';
-    const gVid = document.createElement('div'); gVid.className='grid'; gVid.style.display='none';
+    const gImg=document.createElement('div'); gImg.className='grid';
+    const gVid=document.createElement('div'); gVid.className='grid'; gVid.style.display='none';
 
-    imgs.forEach(u=>{ gImg.appendChild(createImageCard(u)); nImg++; total++; });
-    vids.forEach(u=>{ gVid.appendChild(createVideoCard(u)); nVid++; total++; });
+    images.forEach(u=>{ gImg.appendChild(createImageCard(u)); nImg++; total++; });
+    videos.forEach(u=>{ gVid.appendChild(createVideoCard(u)); nVid++; total++; });
 
-    bImg.onclick = ()=>{ bImg.classList.add('active'); bVid.classList.remove('active'); gImg.style.display='grid'; gVid.style.display='none'; };
-    bVid.onclick = ()=>{ bVid.classList.add('active'); bImg.classList.remove('active'); gVid.style.display='grid'; gImg.style.display='none'; };
+    bImg.onclick=()=>{ bImg.classList.add('active'); bVid.classList.remove('active'); gImg.style.display='grid'; gVid.style.display='none'; };
+    bVid.onclick=()=>{ bVid.classList.add('active'); bImg.classList.remove('active'); gVid.style.display='grid'; gImg.style.display='none'; };
 
-    sec.append(h2, gImg, gVid);
+    sec.append(h2,gImg,gVid);
     content.appendChild(sec);
   }
-
   summary.textContent = total ? `Tổng ${total} mục (${nImg} ảnh, ${nVid} video).` : 'Không có dữ liệu.';
 }
 
-async function fetchJSON(url){ try{ const res=await fetch(url,{cache:'no-store'}); if(!res.ok) return null; return await res.json(); }catch{ return null; } }
+/* ===== Boot ===== */
+async function fetchJSON(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.json(); }catch{ return null; } }
 (async function(){
-  const manifest = await fetchJSON('manifest.json');
-  if(!manifest){ summary.textContent='Lỗi: chưa có manifest.json'; return; }
-  render(manifest);
-  q.addEventListener('input', ()=>{ const term=q.value.trim().toLowerCase(); render(manifest, term); });
+  const data = await fetchJSON('manifest.json');
+  if(!data){ summary.textContent='Lỗi: chưa có manifest.json'; return; }
+  render(data);
+  q.addEventListener('input', ()=>{ const term=q.value.trim().toLowerCase(); render(data, term); });
 })();
 </script>
 </body>
