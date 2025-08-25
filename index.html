@@ -1,234 +1,200 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="locked-html">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Gallery – Ảnh & Video</title>
+<title>Gallery – Danh mục Ảnh (Google Drive)</title>
 <style>
-:root{
-  --bg:#0f1115; --card:#151922; --text:#e8edf2; --muted:#a8b3c7;
-  --border:#20283a; --accent:#4ea1ff; --good:#27c498;
-}
+:root { --bg:#0f1115; --card:#151922; --text:#e8edf2; --muted:#a8b3c7; --border:#20283a; --accent:#4ea1ff; }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
 
-/* header */
+/* ===== Header / Layout ===== */
 header{position:sticky;top:0;background:#10131b;border-bottom:1px solid var(--border);z-index:10}
 .header-inner{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 h1{font-size:18px;margin:0}
 .controls{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 #q{background:#0e131e;border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);min-width:240px}
-
-/* layout */
 main{max-width:1200px;margin:16px auto 56px;padding:0 16px}
-.notice{background:#172033;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin:8px 0 16px;color:var(--muted);font-size:13px}
+#summary{color:var(--muted);font-size:13px;margin:0 0 10px}
 .section{margin:24px 0}
-.section h2{margin:0 0 10px;font-size:18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.tabbar{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden}
-.tabbar button{background:#0f1422;border:0;color:var(--muted);padding:6px 12px;cursor:pointer}
-.tabbar button.active{background:#1b2436;color:#cfe6ff}
-.badge{padding:2px 8px;border-radius:999px;background:#263142;color:#bfe2ff;font-size:12px}
-
-/* grid/list */
+.section h2{margin:0 0 8px;font-size:18px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.preview{display:block;width:100%;height:260px;background:#0b0f18;position:relative}
-.preview img,.preview video{width:100%;height:100%;object-fit:contain;display:block}
-
-/* video controls (custom overlay) */
-.vui{position:absolute;inset:auto 0 0 0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.55));padding:8px;display:flex;gap:8px;align-items:center}
-.btn{background:#1c263a;border:1px solid #2a3753;color:#d9e6ff;border-radius:8px;padding:6px 8px;font-size:12px;cursor:pointer}
-.range{appearance:none;width:140px;height:6px;background:#23304b;border-radius:999px;outline:none}
-.range::-webkit-slider-thumb{appearance:none;width:12px;height:12px;background:#fff;border-radius:50%}
-.time{font:12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#c7d2fe}
-
-/* meta */
+.preview{display:block;width:100%;height:260px;overflow:hidden;background:#0b0f18}
+.preview img{width:100%;height:100%;object-fit:contain;display:block}
 .meta{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;color:var(--muted);font-size:12px}
 .meta code{color:#c7d2fe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
-.meta .kind{color:#9fe3bd}
+.notice{background:#172033;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0 16px;color:var(--muted);font-size:13px}
+footer{max-width:1200px;margin:28px auto 40px;padding:0 16px;color:var(--muted);font-size:12px}
 
-/* lock */
+/* ===== Lock overlay ===== */
 body.locked { overflow: hidden; }
 body.locked header, body.locked main, body.locked footer {
-  filter: blur(14px) brightness(0.6); pointer-events: none; user-select: none;
+  filter: blur(14px) brightness(0.6);
+  pointer-events: none; user-select: none;
 }
-#gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(6,10,18,0.66)}
-#gate .box{width:min(92vw,420px);background:#0f1422;border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
-#gate h2{margin:0 0 10px;font-size:20px}
-#gate p{margin:0 0 14px;color:var(--muted);font-size:13px}
-.ginput{display:flex;gap:8px}
-.ginput input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:#0c1120;color:#fff;font-size:14px;outline:none}
-.ginput button{padding:10px 14px;border-radius:10px;border:1px solid #345b95;background:linear-gradient(180deg,#1a3a6a,#13284a);color:#d9e6ff;cursor:pointer;font-weight:700}
-.ghint{margin-top:10px;font-size:12px;color:#8aa7d1}
+#gate { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(6,10,18,0.66); }
+#gate .box{ width: min(92vw, 420px); background: #0f1422; border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+#gate h2{margin:0 0 10px; font-size:20px}
+#gate p{margin:0 0 14px; color:var(--muted); font-size:13px}
+.ginput{display:flex; gap:8px}
+.ginput input{ flex:1; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:#0c1120; color:#fff; font-size:14px; outline:none;}
+.ginput button{ padding:10px 14px; border-radius:10px; border:1px solid #345b95; background: linear-gradient(180deg,#1a3a6a,#13284a); color:#d9e6ff; cursor:pointer; font-weight:700;}
+.ghint{margin-top:10px; font-size:12px; color:#8aa7d1}
 .hidden{display:none!important}
+.badge{padding:2px 6px;border-radius:999px;background:#263142;color:#bfe2ff;font-size:12px}
+.meta-left{display:flex;gap:8px;align-items:center;min-width:0}
 </style>
 </head>
+
 <body class="locked">
-<!-- ===== Gate / Login Overlay ===== -->
-<div id="gate" role="dialog" aria-modal="true">
-  <div class="box">
-    <h2>🔒 Đăng nhập</h2>
-    <p>Nhập mật khẩu để vào trang.</p>
-    <div class="ginput">
-      <input id="pw" type="password" placeholder="Mật khẩu" autocomplete="current-password"/>
-      <button id="btn">Login</button>
+  <!-- ===== Gate / Login Overlay ===== -->
+  <div id="gate" role="dialog" aria-modal="true">
+    <div class="box">
+      <h2>🔒 Đăng nhập</h2>
+      <p>Nhập mật khẩu để vào trang.</p>
+      <div class="ginput">
+        <input id="pw" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+        <button id="btn">Login</button>
+      </div>
+      <div class="ghint">Gợi ý: viết HOA/THƯỜNG chính xác.</div>
     </div>
-    <div class="ghint">Gợi ý: viết HOA/THƯỜNG chính xác.</div>
   </div>
-</div>
 
-<header>
-  <div class="header-inner">
-    <h1>Gallery – Ảnh &amp; Video</h1>
-    <div class="controls"><input id="q" type="search" placeholder="Tìm link… (lọc theo URL)"/></div>
-  </div>
-</header>
+  <header>
+    <div class="header-inner">
+      <h1>Gallery – Danh mục Ảnh (Google Drive)</h1>
+      <div class="controls">
+        <input id="q" type="search" placeholder="Tìm tên link… (vd: Fall10, id, .jpg)"/>
+      </div>
+    </div>
+  </header>
 
-<main>
-  <div class="notice">
-    Dữ liệu đọc từ <code>manifest.json</code> (xây trước khi deploy). Mỗi danh mục là 1 thư mục (vd: Fall10).
-  </div>
-  <p id="summary" style="color:#a8b3c7;font-size:13px;margin:0 0 10px">Đang tải dữ liệu…</p>
-  <div id="content"></div>
-</main>
+  <main>
+    <div class="notice">
+      Mỗi thư mục cấp 1 là <b>danh mục</b>. Trang đọc danh sách <b>ảnh</b> từ <code>manifest.json</code> (chỉ link Google Drive).
+      <br/>Định dạng hỗ trợ:
+      <ul>
+        <li><code>{"Fall10": ["https://drive.google.com/uc?export=view&id=..."]}</code></li>
+        <li><code>{"Fall10": {"images":[ "...", "..." ]}}</code></li>
+      </ul>
+    </div>
+    <p id="summary">Đang tải dữ liệu…</p>
+    <div id="content"></div>
+  </main>
 
-<footer style="max-width:1200px;margin:28px auto 40px;padding:0 16px;color:#a8b3c7;font-size:12px">
-  File video cần server hỗ trợ <b>Range/CORS</b> để tua mượt.
-</footer>
+  <footer>
+    Nhấn vào thẻ để mở ảnh gốc trong tab mới. Nguồn: <span class="badge">Google Drive (uc?export=view)</span>
+  </footer>
 
 <script>
 /* ===== Password Gate ===== */
-const REQUIRED = 'MANHWA';
+const REQUIRED = 'MANHWA'; // đổi nếu muốn
 const gate = document.getElementById('gate');
-const body = document.body, pw = document.getElementById('pw'), btn = document.getElementById('btn');
-if (sessionStorage.getItem('gateOK') === '1'){ gate.classList.add('hidden'); body.classList.remove('locked'); } else { setTimeout(()=>pw.focus(), 50); }
-function tryLogin(){ const val=(pw.value||'').trim(); if(val===REQUIRED){ sessionStorage.setItem('gateOK','1'); gate.classList.add('hidden'); body.classList.remove('locked'); } else { alert('Sai mật khẩu!'); } }
-btn.addEventListener('click', tryLogin);
-pw.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ tryLogin(); }});
+const body = document.body;
+const pw   = document.getElementById('pw');
+const btn  = document.getElementById('btn');
 
-/* ===== Helpers ===== */
+if (sessionStorage.getItem('gateOK') === '1') {
+  gate.classList.add('hidden'); body.classList.remove('locked');
+} else { setTimeout(()=>pw.focus(), 50); }
+
+function tryLogin(){
+  const val = (pw.value || '').trim();
+  if (val === REQUIRED) {
+    sessionStorage.setItem('gateOK','1');
+    gate.classList.add('hidden'); body.classList.remove('locked');
+  } else {
+    alert('Sai mật khẩu!');
+  }
+}
+btn.addEventListener('click', tryLogin);
+pw.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ tryLogin(); }});
+
+/* ===== Gallery chỉ ảnh (Google Drive) ===== */
 const q = document.getElementById('q');
 const content = document.getElementById('content');
 const summary = document.getElementById('summary');
 
-function looksLikeImage(u){ return /\.(jpg|jpeg|png|webp|gif|bmp|heic|heif|tif|tiff)(\?|$)/i.test(u) || /drive\.google\.com\/uc\?id=/i.test(u); }
-function looksLikeVideoFile(u){ return /\.(mp4|webm|mkv|mov|avi|3gp|m3u8|ts)(\?|$)/i.test(u); }
-function isDrivePreview(u){ return /https:\/\/drive\.google\.com\/file\/.+\/preview/i.test(u); }
-function fmtTime(s){ s = Math.max(0, s|0); const m=(s/60)|0,h=(m/60)|0,mm=(m%60).toString().padStart(2,'0'),ss=(s%60).toString().padStart(2,'0'); return h?`${h}:${mm}:${ss}`:`${m}:${ss}`; }
-
-/* ===== Custom controls chỉ dùng cho file video trực tiếp ===== */
-function attachVUI(video){
-  const bar = document.createElement('div'); bar.className='vui';
-  const bPlay = mkBtn('⏯'), bBack = mkBtn('⏪15s'), bFwd = mkBtn('15s⏩');
-  const seek = mkRange(); const time = mkTime(); const vol = mkRange(0,1,0.01,video.volume); const bMute = mkBtn('🔈'); const bPip=mkBtn('PiP');
-  bar.append(bPlay,bBack,bFwd,seek,time,vol,bMute,bPip); video.parentElement.appendChild(bar);
-  function upd(){ if(!isFinite(video.duration)) return; time.textContent=`${fmtTime(video.currentTime)} / ${fmtTime(video.duration)}`; seek.value=(video.currentTime/video.duration)*100||0; }
-  video.addEventListener('timeupdate',upd); video.addEventListener('loadedmetadata',upd);
-  bPlay.onclick=()=> video.paused?video.play():video.pause();
-  bBack.onclick=()=> video.currentTime=Math.max(0,video.currentTime-15);
-  bFwd.onclick =()=> video.currentTime=Math.min(video.duration||Infinity,video.currentTime+15);
-  seek.oninput =()=>{ if(isFinite(video.duration)) video.currentTime=(seek.value/100)*video.duration; }
-  vol.oninput  =()=>{ video.volume=+vol.value; video.muted=(video.volume===0); bMute.textContent=video.muted?'🔇':'🔈'; }
-  bMute.onclick=()=>{ video.muted=!video.muted; bMute.textContent=video.muted?'🔇':'🔈'; }
-  bPip.onclick =async()=>{ if(document.pictureInPictureElement) await document.exitPictureInPicture(); else if(document.pictureInPictureEnabled) try{ await video.requestPictureInPicture(); }catch{} };
-}
-function mkBtn(t){ const b=document.createElement('button'); b.className='btn'; b.textContent=t; return b; }
-function mkRange(min=0,max=100,step=1,val=0){ const r=document.createElement('input'); r.type='range'; r.min=min; r.max=max; r.step=step; r.value=val; r.className='range'; return r; }
-function mkTime(){ const s=document.createElement('span'); s.className='time'; s.textContent='0:00 / 0:00'; return s; }
-
-/* ===== Card builders ===== */
-function createImageCard(url){
-  const card=document.createElement('div'); card.className='card';
-  const wrap=document.createElement('div'); wrap.className='preview';
-  const img=document.createElement('img'); img.loading='lazy'; img.src=url; img.alt=url;
-  wrap.appendChild(img);
-  card.append(wrap, meta(url,'image'));
-  return card;
-}
-function createVideoCard(url){
-  const card=document.createElement('div'); card.className='card';
-  const wrap=document.createElement('div'); wrap.className='preview';
-
-  if(isDrivePreview(url)){
-    // Google Drive /preview → nhúng iframe (không dùng <video>)
-    const ifr=document.createElement('iframe'); ifr.src=url; ifr.allow='autoplay; fullscreen'; ifr.style.width='100%'; ifr.style.height='100%'; ifr.frameBorder='0';
-    wrap.appendChild(ifr);
-    card.append(wrap, meta(url,'Drive iframe'));
-    return card;
-  }
-
-  // File video trực tiếp → dùng <video> + custom controls
-  const v=document.createElement('video'); v.src=url; v.preload='metadata'; v.controls=false; v.playsInline=true;
-  wrap.appendChild(v);
-  card.append(wrap, meta(url,'video'));
-  attachVUI(v);
-  return card;
-}
-function meta(url,kind){
-  const m=document.createElement('div'); m.className='meta';
-  const left=document.createElement('div'); left.className='meta-left';
-  const code=document.createElement('code'); code.textContent=url;
-  const span=document.createElement('span'); span.className='kind'; span.textContent=kind;
-  left.append(code); m.append(left,span); return m;
-}
-
-/* ===== Render cả 2 dạng manifest ===== */
+/* Hỗ trợ 2 dạng manifest:
+   1) { "Fall10": [url,url] }
+   2) { "Fall10": { "images":[url,url] } }
+*/
 function normalizeManifest(raw){
-  // nếu raw[cat] là array → coi là dạng cũ, tách image/video theo đuôi/link
-  const out={};
-  for(const [cat,val] of Object.entries(raw)){
-    if(Array.isArray(val)){
-      const images=[], videos=[];
-      for(const u of val){ if(looksLikeImage(u)) images.push(u); else if(looksLikeVideoFile(u)||isDrivePreview(u)) videos.push(u); }
-      out[cat]={images, videos};
-    }else{
-      // dạng mới {images, videos}
-      const images=(val.images||[]).slice();
-      const videos=(val.videos||[]).slice();
-      out[cat]={images, videos};
+  const out = {};
+  for (const [cat, val] of Object.entries(raw || {})){
+    if (Array.isArray(val)) {
+      out[cat] = val.slice();
+    } else if (val && typeof val === 'object' && Array.isArray(val.images)) {
+      out[cat] = val.images.slice();
     }
   }
   return out;
 }
 
-function render(manifestRaw, term=''){
-  const manifest=normalizeManifest(manifestRaw);
-  content.innerHTML='';
-  const cats=Object.keys(manifest).sort((a,b)=>{
-    const na=parseInt(a.replace(/\D/g,''))||0, nb=parseInt(b.replace(/\D/g,''))||0; return na-nb;
-  });
-  let total=0, nImg=0, nVid=0;
+function createCard(url){
+  const card = document.createElement('div');
+  card.className = 'card';
 
-  for(const cat of cats){
-    let {images, videos} = manifest[cat];
-    images = images.filter(u=>!term || u.toLowerCase().includes(term));
-    videos = videos.filter(u=>!term || u.toLowerCase().includes(term));
-    if(!images.length && !videos.length) continue;
+  const wrap = document.createElement('a');
+  wrap.className = 'preview';
+  wrap.href = url;
+  wrap.target = '_blank'; wrap.rel = 'noopener';
 
-    const sec=document.createElement('section'); sec.className='section';
-    const h2=document.createElement('h2');
-    const tab=document.createElement('div'); tab.className='tabbar';
-    const bImg=document.createElement('button'); const bVid=document.createElement('button');
-    bImg.textContent=`Ảnh (${images.length})`; bVid.textContent=`Video (${videos.length})`; bImg.className='active';
-    tab.append(bImg,bVid); h2.append(cat,' ',tab);
+  const img = document.createElement('img');
+  img.loading = 'lazy';
+  img.referrerPolicy = 'no-referrer';
+  img.src = url;   // cần dạng uc?export=view&id=...
+  img.alt = url;
 
-    const gImg=document.createElement('div'); gImg.className='grid';
-    const gVid=document.createElement('div'); gVid.className='grid'; gVid.style.display='none';
+  wrap.appendChild(img);
 
-    images.forEach(u=>{ gImg.appendChild(createImageCard(u)); nImg++; total++; });
-    videos.forEach(u=>{ gVid.appendChild(createVideoCard(u)); nVid++; total++; });
+  const meta = document.createElement('div'); meta.className='meta';
+  const left = document.createElement('div'); left.className='meta-left';
+  const code = document.createElement('code'); code.textContent = url;
+  left.append(code);
+  const span = document.createElement('span'); span.textContent = 'image';
+  meta.append(left, span);
 
-    bImg.onclick=()=>{ bImg.classList.add('active'); bVid.classList.remove('active'); gImg.style.display='grid'; gVid.style.display='none'; };
-    bVid.onclick=()=>{ bVid.classList.add('active'); bImg.classList.remove('active'); gVid.style.display='grid'; gImg.style.display='none'; };
-
-    sec.append(h2,gImg,gVid);
-    content.appendChild(sec);
-  }
-  summary.textContent = total ? `Tổng ${total} mục (${nImg} ảnh, ${nVid} video).` : 'Không có dữ liệu.';
+  card.append(wrap, meta);
+  return card;
 }
 
-/* ===== Boot ===== */
-async function fetchJSON(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.json(); }catch{ return null; } }
+function render(manifestRaw, term=''){
+  const manifest = normalizeManifest(manifestRaw);
+  content.innerHTML='';
+  const cats = Object.keys(manifest).sort((a,b)=>{
+    const na=parseInt(a.replace(/\D/g,''))||0, nb=parseInt(b.replace(/\D/g,''))||0;
+    return na-nb || a.localeCompare(b);
+  });
+  let total=0;
+
+  for (const cat of cats){
+    const list = (manifest[cat]||[]).filter(u => !term || u.toLowerCase().includes(term));
+    if (!list.length) continue;
+
+    const sec = document.createElement('section');
+    sec.className='section';
+
+    const h2 = document.createElement('h2'); h2.textContent = cat;
+    const grid = document.createElement('div'); grid.className='grid';
+
+    for (const u of list){
+      grid.appendChild(createCard(u));
+      total++;
+    }
+    sec.append(h2, grid);
+    content.appendChild(sec);
+  }
+  summary.textContent = total ? `Tổng ${total} ảnh.` : 'Không có ảnh phù hợp.';
+}
+
+async function fetchJSON(url){
+  try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) return null; return await r.json(); }
+  catch{ return null; }
+}
+
 (async function(){
   const data = await fetchJSON('manifest.json');
   if(!data){ summary.textContent='Lỗi: chưa có manifest.json'; return; }
