@@ -22,11 +22,13 @@ main{max-width:1200px;margin:16px auto 56px;padding:0 16px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .preview{display:block;width:100%;height:260px;overflow:hidden;background:#0b0f18}
-.preview img,.preview video{width:100%;height:100%;object-fit:contain;display:block}
+.preview img,.preview video,.preview iframe{width:100%;height:100%;object-fit:contain;display:block;border:0}
+
+/* meta row */
 .meta{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;color:var(--muted);font-size:12px}
 .meta code{color:#c7d2fe;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
-.notice{background:#172033;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:8px 0 16px;color:var(--muted);font-size:13px}
-footer{max-width:1200px;margin:28px auto 40px;padding:0 16px;color:var(--muted);font-size:12px}
+.badge{padding:2px 6px;border-radius:999px;background:#263142;color:#bfe2ff;font-size:12px}
+.meta-left{display:flex;gap:8px;align-items:center;min-width:0}
 
 /* ===== Lock overlay ===== */
 body.locked { overflow: hidden; }
@@ -63,8 +65,6 @@ body.locked header, body.locked main, body.locked footer {
 }
 .ghint{margin-top:10px; font-size:12px; color:#8aa7d1}
 .hidden{display:none!important}
-.badge{padding:2px 6px;border-radius:999px;background:#263142;color:#bfe2ff;font-size:12px}
-.meta-left{display:flex;gap:8px;align-items:center;min-width:0}
 </style>
 </head>
 
@@ -82,7 +82,7 @@ body.locked header, body.locked main, body.locked footer {
     </div>
   </div>
 
-  <!-- ===== Real page content below (blurred when locked) ===== -->
+  <!-- ===== Real page content (blurred when locked) ===== -->
   <header>
     <div class="header-inner">
       <h1>Gallery – Danh mục JPG &amp; MP4</h1>
@@ -94,35 +94,30 @@ body.locked header, body.locked main, body.locked footer {
 
   <main>
     <div class="notice">
-      Mỗi thư mục cấp 1 là <b>danh mục</b>. Trang đọc danh sách file từ <code>manifest.json</code> (build trước khi push).
-      Nếu có <code>r2-map.json</code>, các file lớn sẽ tự chuyển sang Cloudflare R2 nhưng vẫn giữ path hiển thị.
+      Mỗi thư mục cấp 1 là <b>danh mục</b>. Trang đọc danh sách từ <code>manifest.json</code> (build trước khi deploy).
     </div>
     <p id="summary">Đang tải dữ liệu…</p>
     <div id="content"></div>
   </main>
 
-  <footer>
-    Nhấn vào thẻ để mở file trong tab mới. (Nguồn: <span class="badge">REPO</span> hoặc <span class="badge">R2</span>)
+  <footer style="max-width:1200px;margin:28px auto 40px;padding:0 16px;color:var(--muted);font-size:12px">
+    Nhấn vào thẻ để mở file trong tab mới.
   </footer>
 
 <script>
 /* ===== Password Gate ===== */
-const RICK = 'https://youtu.be/dQw4w9WgXcQ?si=YSKtsyxDx_psOnb7';
-const REQUIRED = 'MANHWA'; // mật khẩu
-
+const REQUIRED = 'MANHWA'; // đổi mật khẩu ở đây
 const gate = document.getElementById('gate');
 const body = document.body;
 const pw   = document.getElementById('pw');
 const btn  = document.getElementById('btn');
 
-// nếu đã mở trong session này thì bỏ khoá
 if (sessionStorage.getItem('gateOK') === '1') {
   gate.classList.add('hidden');
   body.classList.remove('locked');
 } else {
   setTimeout(()=>pw.focus(), 50);
 }
-
 function tryLogin(){
   const val = (pw.value || '').trim();
   if (val === REQUIRED) {
@@ -130,65 +125,58 @@ function tryLogin(){
     gate.classList.add('hidden');
     body.classList.remove('locked');
   } else {
-    window.location.href = RICK; // sai mật khẩu → ra ngoài
+    alert('Sai mật khẩu!');
   }
 }
 btn.addEventListener('click', tryLogin);
 pw.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ tryLogin(); }});
 
-/* ===== Gallery (JPG & MP4) + R2 mapping ===== */
-const IMG_EXT = new Set(['.jpg']);   // chỉ JPG
-const VID_EXT = new Set(['.mp4']);   // chỉ MP4
+/* ===== Gallery (JPG & MP4) ===== */
 const q = document.getElementById('q');
 const content = document.getElementById('content');
 const summary = document.getElementById('summary');
 
-/** r2Map: { "Fall1/001.mp4": "https://...R2.../Fall1/001.mp4", ... } */
-let r2Map = Object.create(null);
+function looksLikeImage(u){ return /\.(jpg|jpeg|png|webp|gif|bmp|heic|heif|tif|tiff)(\?|$)/i.test(u) || /drive\.google\.com\/uc\?id=/.test(u); }
+function looksLikeVideo(u){ return /\.(mp4|webm|mkv|mov|avi|3gp|m3u8|ts)(\?|$)/i.test(u) || /drive\.google\.com\/file\/.+\/preview/.test(u); }
+function isDrivePreview(u){ return /https:\/\/drive\.google\.com\/file\/.+\/preview/.test(u); }
 
-function extOf(n){ const i=n.lastIndexOf('.'); return i>=0 ? n.slice(i).toLowerCase() : ''; }
-function isImg(n){ return IMG_EXT.has(extOf(n)); }
-function isVid(n){ return VID_EXT.has(extOf(n)); }
-
-/** Trả về {url, origin} – nếu có trong r2Map thì dùng URL R2 */
-function resolveURL(relPath){
-  // relPath kiểu "Fall1/001.mp4"
-  const mapped = r2Map[relPath] || null;
-  if (mapped) return { url: mapped, origin: 'R2' };
-  return { url: relPath, origin: 'REPO' };
-}
-
-function createCard(relPath){
-  const {url, origin} = resolveURL(relPath);
-  const isImage = isImg(relPath);
-  const isVideo = isVid(relPath);
-
+function createCard(url){
   const card = document.createElement('div');
   card.className = 'card';
-  card.dataset.name = relPath.toLowerCase();
+  card.dataset.name = url.toLowerCase();
 
   const wrap = document.createElement('a');
   wrap.className = 'preview';
   wrap.href = url;
   wrap.target = '_blank'; wrap.rel='noopener';
 
-  if(isImage){
+  if (isDrivePreview(url)) {
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.allow = 'autoplay; fullscreen';
+    wrap.appendChild(iframe);
+  } else if (looksLikeImage(url)) {
     const img = document.createElement('img');
-    img.loading='lazy'; img.src=url; img.alt=relPath;
+    img.loading='lazy'; img.src=url; img.alt=url;
     wrap.appendChild(img);
-  }else{
+  } else if (looksLikeVideo(url)) {
     const v = document.createElement('video');
     v.src=url; v.controls=true; v.preload='metadata';
     wrap.appendChild(v);
+  } else {
+    const a = document.createElement('div');
+    a.style.display='grid'; a.style.placeItems='center'; a.style.color='#8aa7d1';
+    a.textContent = 'Link không xác định – mở tab mới';
+    wrap.appendChild(a);
   }
 
   const meta = document.createElement('div'); meta.className='meta';
   const left = document.createElement('div'); left.className='meta-left';
-  const code = document.createElement('code'); code.textContent = relPath;
-  const badge = document.createElement('span'); badge.className='badge'; badge.textContent = origin;
-  left.append(code, badge);
-  const span = document.createElement('span'); span.textContent = isImage ? 'image' : 'video';
-  meta.append(left, span);
+  const code = document.createElement('code'); code.textContent = url;
+  const badge = document.createElement('span'); badge.className='badge';
+  badge.textContent = isDrivePreview(url) ? 'Drive (iframe)' : (looksLikeVideo(url) ? 'video' : 'image');
+  left.append(code);
+  meta.append(left, badge);
 
   card.append(wrap, meta);
   return card;
@@ -199,25 +187,24 @@ function render(manifest, term=''){
   const cats = Object.keys(manifest).sort();
   let total=0, nImg=0, nVid=0;
   for(const cat of cats){
-    // manifest[cat] chứa các path tương đối: "Fall1/001.jpg", "Fall1/001.mp4", ...
     const files = (manifest[cat]||[])
-      .filter(p => (!term || p.toLowerCase().includes(term)))
-      .filter(p => isImg(p) || isVid(p));
-
+      .filter(u => (!term || u.toLowerCase().includes(term)))
+      .filter(u => looksLikeImage(u) || looksLikeVideo(u));
     if(!files.length) continue;
+
     const sec = document.createElement('section');
     sec.className = 'section';
     const h2 = document.createElement('h2'); h2.textContent = cat;
     const grid = document.createElement('div'); grid.className='grid';
 
-    for(const f of files){
-      grid.appendChild(createCard(f));
-      total++; if(isImg(f)) nImg++; else if(isVid(f)) nVid++;
+    for(const url of files){
+      grid.appendChild(createCard(url));
+      total++; if(looksLikeImage(url)) nImg++; else if(looksLikeVideo(url)) nVid++;
     }
     sec.append(h2, grid);
     content.appendChild(sec);
   }
-  summary.textContent = total ? `Tổng ${total} file (${nImg} ảnh, ${nVid} video).` : 'Không có file phù hợp.';
+  summary.textContent = total ? `Tổng ${total} mục (${nImg} ảnh, ${nVid} video).` : 'Không có file phù hợp.';
 }
 
 async function fetchJSON(url){
@@ -229,29 +216,17 @@ async function fetchJSON(url){
 }
 
 async function load(){
-  // 1) Tải r2-map.json (nếu có)
-  const r2 = await fetchJSON('r2-map.json');
-  if (r2 && Array.isArray(r2)) {
-    // định dạng từ script: [{path:"Fall1/001.mp4", r2:"https://..."}, ...]
-    for(const it of r2){
-      if(it && it.path && it.r2) r2Map[it.path] = it.r2;
-    }
-  }
-
-  // 2) Tải manifest.json (bắt buộc)
   const manifest = await fetchJSON('manifest.json');
   if(!manifest){
-    summary.textContent = 'Lỗi: không tìm thấy manifest.json. Hãy build manifest và push lại.';
+    summary.textContent = 'Lỗi: không tìm thấy manifest.json. Hãy chạy build_manifest.py trước khi deploy.';
     return;
   }
-
   render(manifest);
   q.addEventListener('input', () => {
     const term = q.value.trim().toLowerCase();
     render(manifest, term);
   });
 }
-
 load();
 </script>
 </body>
